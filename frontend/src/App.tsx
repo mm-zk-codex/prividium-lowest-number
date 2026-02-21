@@ -4,7 +4,7 @@ import { AdminPage } from './pages/AdminPage';
 import { AuthCallbackPage } from './AuthCallbackPage';
 import { RoundDetailPage } from './pages/RoundDetailPage';
 import { RoundListPage } from './pages/RoundListPage';
-import { chain, prividium, walletClient } from './config';
+import { chain, getWalletClient, prividium } from './config';
 import { hasEthereumProvider } from './utils/wallet';
 import './app.css';
 
@@ -40,6 +40,14 @@ export function App() {
   }, []);
 
   const refreshSession = useCallback(async (knownAccount?: `0x${string}`) => {
+    const walletClient = getWalletClient();
+    if (!walletClient) {
+      setAccount(null);
+      setAuthorized(prividium.isAuthorized());
+      setNetworkOk(false);
+      return;
+    }
+
     const addresses = knownAccount ? [knownAccount] : await walletClient.getAddresses().catch(() => []);
     const nextAccount = (addresses[0] as `0x${string}` | undefined) ?? null;
     const nextAuthorized = prividium.isAuthorized();
@@ -68,6 +76,13 @@ export function App() {
 
   const login = async () => {
     if (!hasEthereumProvider()) {
+      setWalletAvailable(false);
+      setShowWalletMissing(true);
+      return;
+    }
+
+    const walletClient = getWalletClient();
+    if (!walletClient) {
       setWalletAvailable(false);
       setShowWalletMissing(true);
       return;

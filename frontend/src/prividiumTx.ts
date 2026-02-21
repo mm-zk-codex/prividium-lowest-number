@@ -1,4 +1,4 @@
-import { getReadClient, prividium, walletClient } from './config';
+import { getReadClient, getWalletClient, prividium } from './config';
 
 export async function sendPrividiumTx({
   account,
@@ -20,6 +20,11 @@ export async function sendPrividiumTx({
     nonce,
     calldata: data
   });
+
+  const walletClient = getWalletClient();
+  if (!walletClient) {
+    throw new Error('No Web3 wallet detected. Install MetaMask and refresh the page.');
+  }
 
   const hash = await walletClient.sendTransaction({
     account,
