@@ -3,3 +3,4 @@ frontend/node_modules/
 out/
 cache/
 .DS_Store
+frontend/.vite/

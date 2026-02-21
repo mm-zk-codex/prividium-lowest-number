@@ -67,7 +67,6 @@ export function App() {
       await prividium.authorize({ scopes: ['wallet:required', 'network:required'] });
     }
     const [nextAccount] = await walletClient.requestAddresses();
-    await prividium.addNetworkToWallet();
 
     const currentChainId = await walletClient.getChainId().catch(() => null);
     if (currentChainId !== chain.id && (window as any).ethereum) {
