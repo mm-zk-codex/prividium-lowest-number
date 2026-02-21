@@ -1,0 +1,14 @@
+services:
+  web:
+    build: 
+      context: .
+      args:
+        VITE_CHAIN_ID: ${VITE_CHAIN_ID}
+        VITE_RPC_URL: ${VITE_RPC_URL}
+        VITE_PRIVIDIUM_CLIENT_ID: ${VITE_PRIVIDIUM_CLIENT_ID}
+        VITE_AUTH_BASE_URL: ${VITE_AUTH_BASE_URL}
+        VITE_PRIVIDIUM_API_BASE_URL: ${VITE_PRIVIDIUM_API_BASE_URL}
+        VITE_GAME_ADDRESS: ${VITE_GAME_ADDRESS}
+    ports:
+      - "5173:80"
+    restart: unless-stopped
