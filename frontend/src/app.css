@@ -212,3 +212,46 @@ select {
   font-size: 1.6rem;
   margin: 0 0 8px;
 }
+
+.wallet-helper {
+  font-size: 0.8rem;
+  color: #fca5a5;
+}
+
+.wallet-required-card {
+  margin-top: 16px;
+  text-align: center;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.install-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.75);
+  display: grid;
+  place-items: center;
+  z-index: 20;
+  padding: 16px;
+}
+
+.modal-card {
+  max-width: 460px;
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.4);
+}
+
+.modal-card h3 {
+  margin-top: 0;
+}

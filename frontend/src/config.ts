@@ -1,5 +1,6 @@
 import { createPrividiumChain, createPrividiumClient } from 'prividium';
 import { createWalletClient, custom, defineChain } from 'viem';
+import { hasEthereumProvider } from './utils/wallet';
 
 export const chain = defineChain({
   id: Number(import.meta.env.VITE_CHAIN_ID ?? 7777),
@@ -24,9 +25,15 @@ export function getReadClient(account: `0x${string}`) {
   });
 }
 
-export const walletClient = createWalletClient({
-  chain,
-  transport: custom(window.ethereum as any)
-});
+export function getWalletClient() {
+  if (!hasEthereumProvider()) {
+    return null;
+  }
+
+  return createWalletClient({
+    chain,
+    transport: custom((window as any).ethereum)
+  });
+}
 
 export const GAME_ADDRESS = import.meta.env.VITE_GAME_ADDRESS as `0x${string}`;

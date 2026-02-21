@@ -4,7 +4,8 @@ import { AdminPage } from './pages/AdminPage';
 import { AuthCallbackPage } from './AuthCallbackPage';
 import { RoundDetailPage } from './pages/RoundDetailPage';
 import { RoundListPage } from './pages/RoundListPage';
-import { chain, prividium, walletClient } from './config';
+import { chain, getWalletClient, prividium } from './config';
+import { hasEthereumProvider } from './utils/wallet';
 import './app.css';
 
 export type AuthStage = 'logged_out' | 'connected' | 'authorized' | 'wrong_network';
@@ -25,6 +26,8 @@ export function App() {
   const [statusMessage, setStatusMessage] = useState('');
   const [statusKind, setStatusKind] = useState<'ok' | 'warn'>('ok');
   const [refreshVersion, setRefreshVersion] = useState(0);
+  const [walletAvailable, setWalletAvailable] = useState(hasEthereumProvider());
+  const [showWalletMissing, setShowWalletMissing] = useState(false);
 
   const shortAccount = useMemo(() => {
     if (!account) return null;
@@ -37,6 +40,14 @@ export function App() {
   }, []);
 
   const refreshSession = useCallback(async (knownAccount?: `0x${string}`) => {
+    const walletClient = getWalletClient();
+    if (!walletClient) {
+      setAccount(null);
+      setAuthorized(prividium.isAuthorized());
+      setNetworkOk(false);
+      return;
+    }
+
     const addresses = knownAccount ? [knownAccount] : await walletClient.getAddresses().catch(() => []);
     const nextAccount = (addresses[0] as `0x${string}` | undefined) ?? null;
     const nextAuthorized = prividium.isAuthorized();
@@ -53,6 +64,7 @@ export function App() {
   }, [refreshSession]);
 
   useEffect(() => {
+    setWalletAvailable(hasEthereumProvider());
     void refreshSession();
 
     const flash = window.sessionStorage.getItem('app_flash_status');
@@ -63,6 +75,19 @@ export function App() {
   }, [refreshSession, notify]);
 
   const login = async () => {
+    if (!hasEthereumProvider()) {
+      setWalletAvailable(false);
+      setShowWalletMissing(true);
+      return;
+    }
+
+    const walletClient = getWalletClient();
+    if (!walletClient) {
+      setWalletAvailable(false);
+      setShowWalletMissing(true);
+      return;
+    }
+
     if (!prividium.isAuthorized()) {
       await prividium.authorize({ scopes: ['wallet:required', 'network:required'] });
     }
@@ -141,12 +166,23 @@ export function App() {
               Logout
             </button>
           ) : (
-            <button className="btn-primary" onClick={login}>
+            <button className="btn-primary" onClick={login} disabled={!walletAvailable}>
               Login
             </button>
           )}
+          {!walletAvailable ? <span className="wallet-helper">No wallet detected</span> : null}
         </div>
       </header>
+
+      {!walletAvailable ? (
+        <div className="wallet-required-card card">
+          <h2>🔒 Wallet Required</h2>
+          <p>This game requires a Web3 wallet to participate.</p>
+          <a className="btn-primary install-link" href="https://metamask.io/download/" target="_blank" rel="noreferrer">
+            Install MetaMask
+          </a>
+        </div>
+      ) : null}
 
       {stage === 'logged_out' ? (
         <div className="banner warn">You must log in to view your whitelist status and place bets.</div>
@@ -164,14 +200,35 @@ export function App() {
       ) : null}
       {statusMessage ? <div className={`banner ${statusKind}`}>{statusMessage}</div> : null}
 
-      <main className="page-container">
-        <Routes>
-          <Route path="/" element={<RoundListPage session={session} />} />
-          <Route path="/round/:id" element={<RoundDetailPage session={session} />} />
-          <Route path="/admin" element={<AdminPage session={session} />} />
-          <Route path="/auth/callback" element={<AuthCallbackPage />} />
-        </Routes>
-      </main>
+      {walletAvailable ? (
+        <main className="page-container">
+          <Routes>
+            <Route path="/" element={<RoundListPage session={session} />} />
+            <Route path="/round/:id" element={<RoundDetailPage session={session} />} />
+            <Route path="/admin" element={<AdminPage session={session} />} />
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          </Routes>
+        </main>
+      ) : null}
+
+      {showWalletMissing ? (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="wallet-missing-title">
+          <div className="modal-card">
+            <h3 id="wallet-missing-title">No Web3 Wallet Detected</h3>
+            <p>
+              To use this application, you need a Web3 wallet like MetaMask. Install one and refresh the page.
+            </p>
+            <div className="row">
+              <a className="btn-primary install-link" href="https://metamask.io/download/" target="_blank" rel="noreferrer">
+                Install MetaMask
+              </a>
+              <button className="btn-secondary" onClick={() => setShowWalletMissing(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
