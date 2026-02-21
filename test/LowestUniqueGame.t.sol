@@ -6,14 +6,13 @@ import {LowestUniqueGame} from "../src/LowestUniqueGame.sol";
 interface Vm {
     function warp(uint256) external;
     function prank(address) external;
-    function expectRevert(bytes calldata) external;
+    function expectRevert(bytes4) external;
 }
 
 contract LowestUniqueGameTest {
     Vm internal constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     LowestUniqueGame internal game;
-    address internal admin = address(this);
     address internal alice = address(0xA11CE);
     address internal bob = address(0xB0B);
     address internal carol = address(0xCA001);

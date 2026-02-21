@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
 import { AdminPage } from './pages/AdminPage';
+import { AuthCallbackPage } from './AuthCallbackPage';
 import { RoundDetailPage } from './pages/RoundDetailPage';
 import { RoundListPage } from './pages/RoundListPage';
 import { prividium } from './config';
@@ -26,6 +27,7 @@ export function App() {
         <Route path="/" element={<RoundListPage />} />
         <Route path="/round/:id" element={<RoundDetailPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
       </Routes>
     </main>
   );
