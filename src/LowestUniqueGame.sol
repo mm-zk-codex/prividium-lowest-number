@@ -5,7 +5,10 @@ contract LowestUniqueGame {
     uint16 public constant MAX_NUMBER = 256;
 
     address public immutable admin;
+    mapping(address => bool) public isAdmin;
     uint256 public nextRoundId;
+
+    event AdminAdded(address indexed newAdmin);
 
     error OnlyAdmin();
     error RoundNotFound();
@@ -21,6 +24,7 @@ contract LowestUniqueGame {
     error FinalizeTooEarly();
 
     struct Round {
+        string name;
         uint64 startTime;
         uint64 endTime;
         uint16 betsPerPlayer;
@@ -41,15 +45,23 @@ contract LowestUniqueGame {
     mapping(uint256 => RoundHidden) private hidden;
 
     modifier onlyAdmin() {
-        if (msg.sender != admin) revert OnlyAdmin();
+        if (!isAdmin[msg.sender]) revert OnlyAdmin();
         _;
     }
 
     constructor() {
         admin = msg.sender;
+        isAdmin[msg.sender] = true;
+    }
+
+    function addAdmin(address newAdmin) external onlyAdmin {
+        require(newAdmin != address(0), "ZERO_ADDRESS");
+        isAdmin[newAdmin] = true;
+        emit AdminAdded(newAdmin);
     }
 
     function createRound(
+        string calldata name,
         uint64 startTime,
         uint64 endTime,
         uint16 betsPerPlayer,
@@ -61,6 +73,7 @@ contract LowestUniqueGame {
 
         roundId = nextRoundId++;
         Round storage round = rounds[roundId];
+        round.name = name;
         round.startTime = startTime;
         round.endTime = endTime;
         round.betsPerPlayer = betsPerPlayer;
@@ -131,6 +144,7 @@ contract LowestUniqueGame {
         external
         view
         returns (
+            string memory name,
             uint64 startTime,
             uint64 endTime,
             uint16 betsPerPlayer,
@@ -142,6 +156,7 @@ contract LowestUniqueGame {
     {
         Round storage round = _getRound(roundId);
         return (
+            round.name,
             round.startTime,
             round.endTime,
             round.betsPerPlayer,
@@ -155,6 +170,11 @@ contract LowestUniqueGame {
     function isWhitelisted(uint256 roundId, address account) external view returns (bool) {
         Round storage round = _getRound(roundId);
         return round.whitelisted[account];
+    }
+
+    function getMyUsedBets(uint256 roundId) external view returns (uint16 used) {
+        _getRound(roundId);
+        return hidden[roundId].usedBets[msg.sender];
     }
 
     function _getRound(uint256 roundId) internal view returns (Round storage round) {

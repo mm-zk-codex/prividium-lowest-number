@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { SessionState } from '../App';
 import { gameAbi } from '../abi';
-import { GAME_ADDRESS, getReadClient, prividium, walletClient } from '../config';
+import { GAME_ADDRESS, getReadClient } from '../config';
 
 type RoundData = {
   id: bigint;
+  name: string;
   startTime: bigint;
   endTime: bigint;
   betsPerPlayer: number;
@@ -14,23 +16,22 @@ type RoundData = {
   winningNumber: number;
 };
 
-export function RoundListPage() {
+export function RoundListPage({ session }: { session: SessionState }) {
   const [rounds, setRounds] = useState<RoundData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const load = async () => {
+      if (!session.loggedIn || !session.account) {
+        setRounds([]);
+        return;
+      }
+
       try {
         setLoading(true);
         setError('');
-
-        if (!prividium.isAuthorized()) {
-          await prividium.authorize({ scopes: ['wallet:required', 'network:required'] });
-        }
-
-        const [account] = await walletClient.requestAddresses();
-        const readClient = getReadClient(account);
+        const readClient = getReadClient(session.account);
 
         const total = (await readClient.readContract({
           address: GAME_ADDRESS,
@@ -40,15 +41,15 @@ export function RoundListPage() {
 
         const values: RoundData[] = [];
         for (let i = 0n; i < total; i++) {
-          const [startTime, endTime, betsPerPlayer, finishedEarly, finalized, winner, winningNumber] =
+          const [name, startTime, endTime, betsPerPlayer, finishedEarly, finalized, winner, winningNumber] =
             (await readClient.readContract({
               address: GAME_ADDRESS,
               abi: gameAbi,
               functionName: 'getRoundPublic',
               args: [i]
-            })) as [bigint, bigint, number, boolean, boolean, `0x${string}`, number];
+            })) as [string, bigint, bigint, number, boolean, boolean, `0x${string}`, number];
 
-          values.push({ id: i, startTime, endTime, betsPerPlayer, finishedEarly, finalized, winner, winningNumber });
+          values.push({ id: i, name, startTime, endTime, betsPerPlayer, finishedEarly, finalized, winner, winningNumber });
         }
         setRounds(values);
       } catch (err) {
@@ -59,31 +60,50 @@ export function RoundListPage() {
     };
 
     void load();
-  }, []);
+  }, [session.loggedIn, session.account]);
 
   const now = Math.floor(Date.now() / 1000);
 
+  const getStatus = (round: RoundData) => {
+    if (round.finalized) return 'Finalized';
+    if (round.finishedEarly) return 'Finished Early';
+    if (now < Number(round.startTime)) return 'Upcoming';
+    if (now < Number(round.endTime)) return 'Active';
+    return 'Ended';
+  };
+
+  const formatTime = (ts: bigint) => `${new Date(Number(ts) * 1000).toLocaleString()} (${ts.toString()})`;
+
   return (
-    <section>
-      <h2>Rounds</h2>
-      {loading ? <p>Loading rounds...</p> : null}
-      {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
-      <ul>
-        {rounds.map((r) => {
-          const countdown = now < Number(r.startTime) ? Number(r.startTime) - now : Number(r.endTime) - now;
-          return (
-            <li key={r.id.toString()}>
-              <Link to={`/round/${r.id.toString()}`}>Round {r.id.toString()}</Link> · bets/player: {r.betsPerPlayer} ·
-              {r.finalized
-                ? r.winner === '0x0000000000000000000000000000000000000000'
-                  ? ' No winner'
-                  : ` winner ${r.winner} @ ${r.winningNumber}`
-                : ` countdown ${countdown}s`}
-              {r.finishedEarly && !r.finalized ? ' · ended early' : ''}
-            </li>
-          );
-        })}
-      </ul>
+    <section className="stack">
+      <div className="card">
+        <h2>Rounds</h2>
+        {!session.loggedIn ? <p>You must log in to view your whitelist status and place bets.</p> : null}
+        {loading ? <p>Loading rounds...</p> : null}
+        {error ? <p style={{ color: '#fca5a5' }}>{error}</p> : null}
+      </div>
+
+      {rounds.map((r) => (
+        <article className="card" key={r.id.toString()}>
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <div>
+              <h3 style={{ marginBottom: 4 }}>{r.name}</h3>
+              <p className="subtle">Round ID #{r.id.toString()}</p>
+            </div>
+            <span className="chip authorized">{getStatus(r)}</span>
+          </div>
+          <p>
+            <strong>Time:</strong> {formatTime(r.startTime)} → {formatTime(r.endTime)}
+          </p>
+          <p>
+            <strong>Bets/player:</strong> {r.betsPerPlayer}
+          </p>
+          {r.finalized ? (
+            <p>{r.winner === '0x0000000000000000000000000000000000000000' ? 'No winner' : `Winner ${r.winner} @ ${r.winningNumber}`}</p>
+          ) : null}
+          <Link to={`/round/${r.id.toString()}`}>Open round</Link>
+        </article>
+      ))}
     </section>
   );
 }
