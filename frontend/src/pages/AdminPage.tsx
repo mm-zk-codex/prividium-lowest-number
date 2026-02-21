@@ -7,8 +7,8 @@ import { sendPrividiumTx } from '../prividiumTx';
 
 export function AdminPage({ session }: { session: SessionState }) {
   const [name, setName] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [startTimeInput, setStartTimeInput] = useState('');
+  const [endTimeInput, setEndTimeInput] = useState('');
   const [betsPerPlayer, setBetsPerPlayer] = useState(1);
   const [participants, setParticipants] = useState('');
   const [roundId, setRoundId] = useState('0');
@@ -44,6 +44,18 @@ export function AdminPage({ session }: { session: SessionState }) {
 
   const createRound = async () => {
     if (!session.account || !session.loggedIn) return;
+    if (!startTimeInput || !endTimeInput) {
+      session.notify('Please select start and end time.', 'warn');
+      return;
+    }
+
+    const startTime = Math.floor(new Date(startTimeInput).getTime() / 1000);
+    const endTime = Math.floor(new Date(endTimeInput).getTime() / 1000);
+    if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || startTime >= endTime) {
+      session.notify('Please provide a valid time range.', 'warn');
+      return;
+    }
+
     const list = participants
       .split(',')
       .map((x) => x.trim())
@@ -100,59 +112,67 @@ export function AdminPage({ session }: { session: SessionState }) {
         {isAdmin ? <span className="status-badge active">You are admin</span> : <span className="status-badge ended">You are not admin</span>}
       </article>
 
-      <article className="card stack">
-        <h3>Create Round</h3>
-        <label>
-          <span className="label">Round name (required)</span>
-          <input className="input" placeholder="Friday Night Round" value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label>
-          <span className="label">Start unix</span>
-          <input className="input" placeholder="1735689600" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-        </label>
-        <label>
-          <span className="label">End unix</span>
-          <input className="input" placeholder="1735693200" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-        </label>
-        <label>
-          <span className="label">Bets per player</span>
-          <input className="input" type="number" value={betsPerPlayer} onChange={(e) => setBetsPerPlayer(Number(e.target.value))} />
-        </label>
-        <label>
-          <span className="label">Participants (comma-separated addresses)</span>
-          <textarea className="textarea" rows={4} value={participants} onChange={(e) => setParticipants(e.target.value)} />
-        </label>
-        <button className="btn-primary" onClick={createRound}>
-          Create round
-        </button>
-      </article>
+      {isAdmin ? (
+        <>
+          <article className="card stack">
+            <h3>Create Round</h3>
+            <label>
+              <span className="label">Round name (required)</span>
+              <input className="input" placeholder="Friday Night Round" value={name} onChange={(e) => setName(e.target.value)} />
+            </label>
+            <label>
+              <span className="label">Starts at</span>
+              <input className="input" type="datetime-local" value={startTimeInput} onChange={(e) => setStartTimeInput(e.target.value)} />
+            </label>
+            <label>
+              <span className="label">Ends at</span>
+              <input className="input" type="datetime-local" value={endTimeInput} onChange={(e) => setEndTimeInput(e.target.value)} />
+            </label>
+            <label>
+              <span className="label">Bets per player</span>
+              <input className="input" type="number" value={betsPerPlayer} onChange={(e) => setBetsPerPlayer(Number(e.target.value))} />
+            </label>
+            <label>
+              <span className="label">Participants (comma-separated addresses)</span>
+              <textarea className="textarea" rows={4} value={participants} onChange={(e) => setParticipants(e.target.value)} />
+            </label>
+            <button className="btn-primary" onClick={createRound}>
+              Create round
+            </button>
+          </article>
 
-      <article className="card stack">
-        <h3>Manage Round</h3>
-        <label>
-          <span className="label">Round ID</span>
-          <input className="input" value={roundId} onChange={(e) => setRoundId(e.target.value)} />
-        </label>
-        <div className="row">
-          <button className="btn-secondary" onClick={finishNow}>
-            Finish early
-          </button>
-          <button className="btn-primary" onClick={finalize}>
-            Finalize
-          </button>
-        </div>
-      </article>
+          <article className="card stack">
+            <h3>Manage Round</h3>
+            <label>
+              <span className="label">Round ID</span>
+              <input className="input" value={roundId} onChange={(e) => setRoundId(e.target.value)} />
+            </label>
+            <div className="row">
+              <button className="btn-secondary" onClick={finishNow}>
+                Finish early
+              </button>
+              <button className="btn-primary" onClick={finalize}>
+                Finalize
+              </button>
+            </div>
+          </article>
 
-      <article className="card stack">
-        <h3>Add admin</h3>
-        <label>
-          <span className="label">New admin address</span>
-          <input className="input" value={newAdmin} onChange={(e) => setNewAdmin(e.target.value)} placeholder="0x..." />
-        </label>
-        <button className="btn-primary" onClick={addAdmin}>
-          Add admin
-        </button>
-      </article>
+          <article className="card stack">
+            <h3>Add admin</h3>
+            <label>
+              <span className="label">New admin address</span>
+              <input className="input" value={newAdmin} onChange={(e) => setNewAdmin(e.target.value)} placeholder="0x..." />
+            </label>
+            <button className="btn-primary" onClick={addAdmin}>
+              Add admin
+            </button>
+          </article>
+        </>
+      ) : (
+        <article className="card">
+          You are not an admin on this contract. Admin actions are hidden.
+        </article>
+      )}
 
       <article className="card">{status}</article>
     </section>

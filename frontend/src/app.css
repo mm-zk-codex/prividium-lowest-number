@@ -73,6 +73,11 @@ a {
   border-color: #166534;
 }
 
+.chip.account-chip {
+  background: #172554;
+  border-color: #1d4ed8;
+}
+
 .btn-primary,
 .btn-secondary {
   border: none;

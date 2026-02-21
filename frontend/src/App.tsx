@@ -26,6 +26,11 @@ export function App() {
   const [statusKind, setStatusKind] = useState<'ok' | 'warn'>('ok');
   const [refreshVersion, setRefreshVersion] = useState(0);
 
+  const shortAccount = useMemo(() => {
+    if (!account) return null;
+    return `${account.slice(0, 6)}...${account.slice(-4)}`;
+  }, [account]);
+
   const notify = useCallback((message: string, kind: 'ok' | 'warn' = 'ok') => {
     setStatusMessage(message);
     setStatusKind(kind);
@@ -49,7 +54,13 @@ export function App() {
 
   useEffect(() => {
     void refreshSession();
-  }, [refreshSession]);
+
+    const flash = window.sessionStorage.getItem('app_flash_status');
+    if (flash) {
+      notify(flash);
+      window.sessionStorage.removeItem('app_flash_status');
+    }
+  }, [refreshSession, notify]);
 
   const login = async () => {
     if (!prividium.isAuthorized()) {
@@ -69,7 +80,8 @@ export function App() {
 
     await refreshSession(nextAccount);
     await refreshAppState();
-    notify('Logged in successfully.');
+    window.sessionStorage.setItem('app_flash_status', 'Logged in successfully.');
+    window.location.reload();
   };
 
   const logout = async () => {
@@ -124,6 +136,7 @@ export function App() {
         </nav>
         <div className="auth-box">
           <span className={`chip ${stage}`}>Status: {stage.replace('_', ' ')}</span>
+          {shortAccount ? <span className="chip account-chip">Wallet: {shortAccount}</span> : null}
           {session.loggedIn ? (
             <button className="btn-secondary" onClick={logout}>
               Logout
