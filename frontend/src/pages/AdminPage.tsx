@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { encodeFunctionData } from 'viem';
 import type { SessionState } from '../App';
 import { gameAbi } from '../abi';
-import { GAME_ADDRESS } from '../config';
+import { GAME_ADDRESS, getReadClient } from '../config';
 import { sendPrividiumTx } from '../prividiumTx';
 
 export function AdminPage({ session }: { session: SessionState }) {
@@ -14,6 +14,33 @@ export function AdminPage({ session }: { session: SessionState }) {
   const [roundId, setRoundId] = useState('0');
   const [newAdmin, setNewAdmin] = useState('');
   const [status, setStatus] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!session.account || !session.loggedIn) {
+        setIsAdmin(false);
+        return;
+      }
+      const readClient = getReadClient(session.account);
+      const value = (await readClient.readContract({
+        address: GAME_ADDRESS,
+        abi: gameAbi,
+        functionName: 'isAdmin',
+        args: [session.account]
+      })) as boolean;
+      setIsAdmin(value);
+    };
+    void load();
+  }, [session.account, session.loggedIn, session.refreshVersion]);
+
+  const waitForTx = async (hash: `0x${string}`, successMessage: string) => {
+    if (!session.account) return;
+    const readClient = getReadClient(session.account);
+    await readClient.waitForTransactionReceipt({ hash });
+    await session.refreshAppState();
+    session.notify(successMessage);
+  };
 
   const createRound = async () => {
     if (!session.account || !session.loggedIn) return;
@@ -29,6 +56,7 @@ export function AdminPage({ session }: { session: SessionState }) {
     });
     const hash = await sendPrividiumTx({ account: session.account, to: GAME_ADDRESS, data });
     setStatus(`Create round tx: ${hash}`);
+    await waitForTx(hash, 'Round created successfully');
   };
 
   const finishNow = async () => {
@@ -36,6 +64,7 @@ export function AdminPage({ session }: { session: SessionState }) {
     const data = encodeFunctionData({ abi: gameAbi, functionName: 'finishNow', args: [BigInt(roundId)] });
     const hash = await sendPrividiumTx({ account: session.account, to: GAME_ADDRESS, data });
     setStatus(`Finish-now tx: ${hash}`);
+    await waitForTx(hash, 'Round finished early');
   };
 
   const finalize = async () => {
@@ -43,6 +72,7 @@ export function AdminPage({ session }: { session: SessionState }) {
     const data = encodeFunctionData({ abi: gameAbi, functionName: 'finalize', args: [BigInt(roundId)] });
     const hash = await sendPrividiumTx({ account: session.account, to: GAME_ADDRESS, data });
     setStatus(`Finalize tx: ${hash}`);
+    await waitForTx(hash, 'Round finalized successfully');
   };
 
   const addAdmin = async () => {
@@ -50,6 +80,7 @@ export function AdminPage({ session }: { session: SessionState }) {
     const data = encodeFunctionData({ abi: gameAbi, functionName: 'addAdmin', args: [newAdmin as `0x${string}`] });
     const hash = await sendPrividiumTx({ account: session.account, to: GAME_ADDRESS, data });
     setStatus(`Add admin tx: ${hash}`);
+    await waitForTx(hash, 'Admin added successfully');
   };
 
   if (!session.loggedIn) {
@@ -66,10 +97,11 @@ export function AdminPage({ session }: { session: SessionState }) {
       <article className="card stack">
         <h2>Admin Panel</h2>
         <p className="subtle">Create and manage rounds with private bets.</p>
+        {isAdmin ? <span className="status-badge active">You are admin</span> : <span className="status-badge ended">You are not admin</span>}
       </article>
 
       <article className="card stack">
-        <h3>Create round</h3>
+        <h3>Create Round</h3>
         <label>
           <span className="label">Round name (required)</span>
           <input className="input" placeholder="Friday Night Round" value={name} onChange={(e) => setName(e.target.value)} />
@@ -96,7 +128,7 @@ export function AdminPage({ session }: { session: SessionState }) {
       </article>
 
       <article className="card stack">
-        <h3>Round actions</h3>
+        <h3>Manage Round</h3>
         <label>
           <span className="label">Round ID</span>
           <input className="input" value={roundId} onChange={(e) => setRoundId(e.target.value)} />

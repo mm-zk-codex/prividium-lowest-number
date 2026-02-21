@@ -13,6 +13,9 @@ export type SessionState = {
   account: `0x${string}` | null;
   loggedIn: boolean;
   stage: AuthStage;
+  refreshVersion: number;
+  refreshAppState: () => Promise<void>;
+  notify: (message: string, kind?: 'ok' | 'warn') => void;
 };
 
 export function App() {
@@ -20,6 +23,13 @@ export function App() {
   const [authorized, setAuthorized] = useState(false);
   const [networkOk, setNetworkOk] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const [statusKind, setStatusKind] = useState<'ok' | 'warn'>('ok');
+  const [refreshVersion, setRefreshVersion] = useState(0);
+
+  const notify = useCallback((message: string, kind: 'ok' | 'warn' = 'ok') => {
+    setStatusMessage(message);
+    setStatusKind(kind);
+  }, []);
 
   const refreshSession = useCallback(async (knownAccount?: `0x${string}`) => {
     const addresses = knownAccount ? [knownAccount] : await walletClient.getAddresses().catch(() => []);
@@ -31,6 +41,11 @@ export function App() {
     setAuthorized(nextAuthorized);
     setNetworkOk(currentChainId === chain.id);
   }, []);
+
+  const refreshAppState = useCallback(async () => {
+    await refreshSession();
+    setRefreshVersion((value) => value + 1);
+  }, [refreshSession]);
 
   useEffect(() => {
     void refreshSession();
@@ -53,14 +68,26 @@ export function App() {
 
 
     await refreshSession(nextAccount);
-    setStatusMessage('Logged in successfully.');
+    await refreshAppState();
+    notify('Logged in successfully.');
   };
 
-  const logout = () => {
+  const logout = async () => {
+    prividium.unauthorize();
+    if ((window as any).ethereum?.request) {
+      await (window as any).ethereum
+        .request({
+          method: 'wallet_revokePermissions',
+          params: [{ eth_accounts: {} }]
+        })
+        .catch(() => null);
+    }
     setAccount(null);
     setAuthorized(false);
     setNetworkOk(false);
-    setStatusMessage('Logged out.');
+    setRefreshVersion(0);
+    await refreshAppState();
+    notify('Logged out.');
   };
 
   const stage = useMemo<AuthStage>(() => {
@@ -73,7 +100,10 @@ export function App() {
   const session: SessionState = {
     account,
     loggedIn: stage === 'authorized',
-    stage
+    stage,
+    refreshVersion,
+    refreshAppState,
+    notify
   };
 
   const addNetwork = async () => {
@@ -120,7 +150,7 @@ export function App() {
           </button>
         </div>
       ) : null}
-      {statusMessage ? <div className="banner ok">{statusMessage}</div> : null}
+      {statusMessage ? <div className={`banner ${statusKind}`}>{statusMessage}</div> : null}
 
       <main className="page-container">
         <Routes>

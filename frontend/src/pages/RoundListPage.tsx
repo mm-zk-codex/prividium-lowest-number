@@ -60,11 +60,11 @@ export function RoundListPage({ session }: { session: SessionState }) {
     };
 
     void load();
-  }, [session.loggedIn, session.account]);
+  }, [session.loggedIn, session.account, session.refreshVersion]);
 
   const now = Math.floor(Date.now() / 1000);
 
-  const getStatus = (round: RoundData) => {
+  const getStatus = (round: RoundData): 'Finalized' | 'Finished Early' | 'Upcoming' | 'Active' | 'Ended' => {
     if (round.finalized) return 'Finalized';
     if (round.finishedEarly) return 'Finished Early';
     if (now < Number(round.startTime)) return 'Upcoming';
@@ -72,7 +72,14 @@ export function RoundListPage({ session }: { session: SessionState }) {
     return 'Ended';
   };
 
-  const formatTime = (ts: bigint) => `${new Date(Number(ts) * 1000).toLocaleString()} (${ts.toString()})`;
+  const formatTime = (ts: bigint) =>
+    new Date(Number(ts) * 1000).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
   return (
     <section className="stack">
@@ -83,17 +90,24 @@ export function RoundListPage({ session }: { session: SessionState }) {
         {error ? <p style={{ color: '#fca5a5' }}>{error}</p> : null}
       </div>
 
-      {rounds.map((r) => (
+      {!loading && session.loggedIn && rounds.length === 0 ? <article className="card">No rounds available yet.</article> : null}
+
+      {rounds.map((r) => {
+        const status = getStatus(r);
+        return (
         <article className="card" key={r.id.toString()}>
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <div>
               <h3 style={{ marginBottom: 4 }}>{r.name}</h3>
               <p className="subtle">Round ID #{r.id.toString()}</p>
             </div>
-            <span className="chip authorized">{getStatus(r)}</span>
+            <span className={`status-badge ${status.toLowerCase().replace(' ', '-')}`}>{status}</span>
           </div>
           <p>
-            <strong>Time:</strong> {formatTime(r.startTime)} → {formatTime(r.endTime)}
+            <strong>Starts:</strong> {formatTime(r.startTime)}
+          </p>
+          <p>
+            <strong>Ends:</strong> {formatTime(r.endTime)}
           </p>
           <p>
             <strong>Bets/player:</strong> {r.betsPerPlayer}
@@ -103,7 +117,8 @@ export function RoundListPage({ session }: { session: SessionState }) {
           ) : null}
           <Link to={`/round/${r.id.toString()}`}>Open round</Link>
         </article>
-      ))}
+        );
+      })}
     </section>
   );
 }

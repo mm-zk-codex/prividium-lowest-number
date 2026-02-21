@@ -33,13 +33,13 @@ a {
 
 .navbar h1 {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.5rem;
 }
 
 .subtle {
   color: #94a3b8;
   margin: 2px 0 0;
-  font-size: 0.86rem;
+  font-size: 0.9rem;
 }
 
 .nav-links {
@@ -93,10 +93,16 @@ a {
   color: #dbeafe;
 }
 
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .page-container {
-  margin-top: 22px;
+  margin-top: 24px;
   display: grid;
-  gap: 14px;
+  gap: 24px;
 }
 
 .card {
@@ -114,7 +120,7 @@ a {
 
 .stack {
   display: grid;
-  gap: 12px;
+  gap: 24px;
 }
 
 .row {
@@ -156,4 +162,48 @@ select {
 .banner.ok {
   background: #052e1f;
   border: 1px solid #166534;
+}
+
+.status-badge {
+  border-radius: 999px;
+  padding: 4px 12px;
+  border: 1px solid transparent;
+  font-size: 0.8rem;
+}
+
+.status-badge.upcoming {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+}
+
+.status-badge.active {
+  background: #052e1f;
+  border-color: #16a34a;
+}
+
+.status-badge.ended {
+  background: #7c2d12;
+  border-color: #fb923c;
+}
+
+.status-badge.finished-early {
+  background: #581c87;
+  border-color: #a855f7;
+}
+
+.status-badge.finalized {
+  background: #334155;
+  border-color: #94a3b8;
+}
+
+.winner-card {
+  background: linear-gradient(120deg, rgba(30, 64, 175, 0.25), rgba(22, 163, 74, 0.2));
+  border: 1px solid #60a5fa;
+  border-radius: 14px;
+  padding: 24px;
+}
+
+.winner-card h2 {
+  font-size: 1.6rem;
+  margin: 0 0 8px;
 }
