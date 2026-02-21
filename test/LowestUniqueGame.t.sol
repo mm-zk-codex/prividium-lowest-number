@@ -28,7 +28,34 @@ contract LowestUniqueGameTest {
         participants[2] = carol;
         uint64 start = uint64(block.timestamp + 1);
         uint64 end = uint64(block.timestamp + 100);
-        return game.createRound(start, end, betsPerPlayer, participants);
+        return game.createRound("Test Round", start, end, betsPerPlayer, participants);
+    }
+
+    function testAdminCanAddAnotherAdmin() public {
+        game.addAdmin(bob);
+        require(game.isAdmin(bob), "bob should be admin");
+    }
+
+    function testNonAdminCannotAddAdmin() public {
+        vm.prank(alice);
+        vm.expectRevert(LowestUniqueGame.OnlyAdmin.selector);
+        game.addAdmin(bob);
+    }
+
+    function testAddedAdminCanManageRounds() public {
+        game.addAdmin(bob);
+
+        address[] memory participants = new address[](1);
+        participants[0] = alice;
+
+        vm.prank(bob);
+        uint256 roundId = game.createRound("Bob Round", uint64(block.timestamp + 1), uint64(block.timestamp + 10), 1, participants);
+
+        vm.prank(bob);
+        game.finishNow(roundId);
+
+        (, , , , bool finishedEarly, , , ) = game.getRoundPublic(roundId);
+        require(finishedEarly, "round should be finished early");
     }
 
     function testLowestUniqueWinnerSingleUnique() public {
@@ -134,7 +161,7 @@ contract LowestUniqueGameTest {
         vm.warp(block.timestamp + 200);
         game.finalize(roundId);
 
-        (, , , , bool finalized, address winner, uint16 winningNumber) = game.getRoundPublic(roundId);
+        (, , , , , bool finalized, address winner, uint16 winningNumber) = game.getRoundPublic(roundId);
         require(finalized, "round should be finalized");
         require(winner == alice, "winner mismatch");
         require(winningNumber == 9, "winning number mismatch");
@@ -165,5 +192,31 @@ contract LowestUniqueGameTest {
         game.finishNow(roundId);
         (address winner, uint16 number) = game.finalize(roundId);
         require(winner == alice && number == 12, "finish now finalize failed");
+    }
+
+    function testRoundNameStoredAndReturned() public {
+        uint256 roundId = _createRound(1);
+        (string memory name, , , , , , , ) = game.getRoundPublic(roundId);
+        require(keccak256(bytes(name)) == keccak256(bytes("Test Round")), "name mismatch");
+    }
+
+    function testGetMyUsedBetsTracksOnlyCallerCount() public {
+        uint256 roundId = _createRound(2);
+        vm.warp(block.timestamp + 2);
+
+        vm.prank(alice);
+        game.bet(roundId, 3);
+
+        vm.prank(bob);
+        game.bet(roundId, 4);
+
+        vm.prank(alice);
+        uint16 aliceUsed = game.getMyUsedBets(roundId);
+
+        vm.prank(bob);
+        uint16 bobUsed = game.getMyUsedBets(roundId);
+
+        require(aliceUsed == 1, "alice used mismatch");
+        require(bobUsed == 1, "bob used mismatch");
     }
 }

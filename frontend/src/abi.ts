@@ -8,10 +8,18 @@ export const gameAbi = [
   },
   {
     type: 'function',
+    name: 'isAdmin',
+    stateMutability: 'view',
+    inputs: [{ type: 'address', name: 'account' }],
+    outputs: [{ type: 'bool' }]
+  },
+  {
+    type: 'function',
     name: 'getRoundPublic',
     stateMutability: 'view',
     inputs: [{ type: 'uint256', name: 'roundId' }],
     outputs: [
+      { type: 'string', name: 'name' },
       { type: 'uint64', name: 'startTime' },
       { type: 'uint64', name: 'endTime' },
       { type: 'uint16', name: 'betsPerPlayer' },
@@ -33,15 +41,30 @@ export const gameAbi = [
   },
   {
     type: 'function',
+    name: 'getMyUsedBets',
+    stateMutability: 'view',
+    inputs: [{ type: 'uint256', name: 'roundId' }],
+    outputs: [{ type: 'uint16', name: 'used' }]
+  },
+  {
+    type: 'function',
     name: 'createRound',
     stateMutability: 'nonpayable',
     inputs: [
+      { type: 'string', name: 'name' },
       { type: 'uint64', name: 'startTime' },
       { type: 'uint64', name: 'endTime' },
       { type: 'uint16', name: 'betsPerPlayer' },
       { type: 'address[]', name: 'participants' }
     ],
     outputs: [{ type: 'uint256' }]
+  },
+  {
+    type: 'function',
+    name: 'addAdmin',
+    stateMutability: 'nonpayable',
+    inputs: [{ type: 'address', name: 'newAdmin' }],
+    outputs: []
   },
   {
     type: 'function',

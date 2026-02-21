@@ -16,25 +16,18 @@ export async function sendPrividiumTx({
 
   await prividium.authorizeTransaction({
     walletAddress: account,
-    toAddress: to,
+    contractAddress: to,
     nonce,
     calldata: data
   });
 
-
-  try {
-    const hash = await walletClient.sendTransaction({
-      account,
-      to,
-      data,
-      nonce,
-      gas,
-      gasPrice
-    });
-    return hash;
-  } catch (err) {
-    console.error("Error sending transaction: ", err);
-    throw err;
-  }
-
+  const hash = await walletClient.sendTransaction({
+    account,
+    to,
+    data,
+    nonce,
+    gas,
+    gasPrice
+  });
+  return hash;
 }
