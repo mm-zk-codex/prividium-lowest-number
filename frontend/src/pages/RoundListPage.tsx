@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { gameAbi } from '../abi';
-import { GAME_ADDRESS, readClient } from '../config';
+import { GAME_ADDRESS, getReadClient, prividium, walletClient } from '../config';
 
 type RoundData = {
   id: bigint;
@@ -16,28 +16,46 @@ type RoundData = {
 
 export function RoundListPage() {
   const [rounds, setRounds] = useState<RoundData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const load = async () => {
-      const total = (await readClient.readContract({
-        address: GAME_ADDRESS,
-        abi: gameAbi,
-        functionName: 'nextRoundId'
-      })) as bigint;
+      try {
+        setLoading(true);
+        setError('');
 
-      const values: RoundData[] = [];
-      for (let i = 0n; i < total; i++) {
-        const [startTime, endTime, betsPerPlayer, finishedEarly, finalized, winner, winningNumber] =
-          (await readClient.readContract({
-            address: GAME_ADDRESS,
-            abi: gameAbi,
-            functionName: 'getRoundPublic',
-            args: [i]
-          })) as [bigint, bigint, number, boolean, boolean, `0x${string}`, number];
+        if (!prividium.isAuthorized()) {
+          await prividium.authorize({ scopes: ['wallet:required', 'network:required'] });
+        }
 
-        values.push({ id: i, startTime, endTime, betsPerPlayer, finishedEarly, finalized, winner, winningNumber });
+        const [account] = await walletClient.requestAddresses();
+        const readClient = getReadClient(account);
+
+        const total = (await readClient.readContract({
+          address: GAME_ADDRESS,
+          abi: gameAbi,
+          functionName: 'nextRoundId'
+        })) as bigint;
+
+        const values: RoundData[] = [];
+        for (let i = 0n; i < total; i++) {
+          const [startTime, endTime, betsPerPlayer, finishedEarly, finalized, winner, winningNumber] =
+            (await readClient.readContract({
+              address: GAME_ADDRESS,
+              abi: gameAbi,
+              functionName: 'getRoundPublic',
+              args: [i]
+            })) as [bigint, bigint, number, boolean, boolean, `0x${string}`, number];
+
+          values.push({ id: i, startTime, endTime, betsPerPlayer, finishedEarly, finalized, winner, winningNumber });
+        }
+        setRounds(values);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load rounds');
+      } finally {
+        setLoading(false);
       }
-      setRounds(values);
     };
 
     void load();
@@ -48,6 +66,8 @@ export function RoundListPage() {
   return (
     <section>
       <h2>Rounds</h2>
+      {loading ? <p>Loading rounds...</p> : null}
+      {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
       <ul>
         {rounds.map((r) => {
           const countdown = now < Number(r.startTime) ? Number(r.startTime) - now : Number(r.endTime) - now;

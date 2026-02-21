@@ -1,5 +1,5 @@
-import { createPrividiumChain } from 'prividium';
-import { createPublicClient, createWalletClient, custom, defineChain } from 'viem';
+import { createPrividiumChain, createPrividiumClient } from 'prividium';
+import { createWalletClient, custom, defineChain } from 'viem';
 
 export const chain = defineChain({
   id: Number(import.meta.env.VITE_CHAIN_ID ?? 7777),
@@ -17,10 +17,13 @@ export const prividium = createPrividiumChain({
   redirectUrl: `${window.location.origin}/auth/callback`
 });
 
-export const readClient = createPublicClient({
-  chain,
-  transport: prividium.transport
-});
+export function getReadClient(account: `0x${string}`) {
+  return createPrividiumClient({
+    chain,
+    transport: prividium.transport,
+    account
+  });
+}
 
 export const walletClient = createWalletClient({
   chain,

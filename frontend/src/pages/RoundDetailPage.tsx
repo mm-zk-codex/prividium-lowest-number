@@ -2,7 +2,7 @@ import { encodeFunctionData } from 'viem';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { gameAbi } from '../abi';
-import { GAME_ADDRESS, readClient, walletClient } from '../config';
+import { GAME_ADDRESS, getReadClient, prividium, walletClient } from '../config';
 import { sendPrividiumTx } from '../prividiumTx';
 
 export function RoundDetailPage() {
@@ -17,6 +17,14 @@ export function RoundDetailPage() {
   const now = Math.floor(Date.now() / 1000);
 
   const load = async () => {
+    if (!prividium.isAuthorized()) {
+      await prividium.authorize({ scopes: ['wallet:required', 'network:required'] });
+    }
+
+    const [addr] = await walletClient.requestAddresses();
+    setAccount(addr);
+    const readClient = getReadClient(addr);
+
     const data = await readClient.readContract({
       address: GAME_ADDRESS,
       abi: gameAbi,
@@ -25,8 +33,6 @@ export function RoundDetailPage() {
     });
     setRound(data);
 
-    const [addr] = await walletClient.requestAddresses();
-    setAccount(addr);
     const allowed = (await readClient.readContract({
       address: GAME_ADDRESS,
       abi: gameAbi,

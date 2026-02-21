@@ -1,4 +1,4 @@
-import { prividium, readClient, walletClient } from './config';
+import { getReadClient, prividium, walletClient } from './config';
 
 export async function sendPrividiumTx({
   account,
@@ -9,6 +9,7 @@ export async function sendPrividiumTx({
   to: `0x${string}`;
   data: `0x${string}`;
 }) {
+  const readClient = getReadClient(account);
   const nonce = await readClient.getTransactionCount({ address: account });
   const gas = await readClient.estimateGas({ account, to, data });
   const gasPrice = await readClient.getGasPrice();
