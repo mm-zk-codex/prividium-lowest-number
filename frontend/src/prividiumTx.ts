@@ -16,7 +16,7 @@ export async function sendPrividiumTx({
 
   await prividium.authorizeTransaction({
     walletAddress: account,
-    contractAddress: to,
+    toAddress: to,
     nonce,
     calldata: data
   });

@@ -37,6 +37,9 @@ export function App() {
   }, [refreshSession]);
 
   const login = async () => {
+    if (!prividium.isAuthorized()) {
+      await prividium.authorize({ scopes: ['wallet:required', 'network:required'] });
+    }
     const [nextAccount] = await walletClient.requestAddresses();
     await prividium.addNetworkToWallet();
 
@@ -48,9 +51,6 @@ export function App() {
       });
     }
 
-    if (!prividium.isAuthorized()) {
-      await prividium.authorize({ scopes: ['wallet:required', 'network:required'] });
-    }
 
     await refreshSession(nextAccount);
     setStatusMessage('Logged in successfully.');
