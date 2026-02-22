@@ -96,13 +96,6 @@ export function App() {
     }
   }, [refreshSession, notify]);
 
-  // Show tutorial on first visit
-  useEffect(() => {
-    if (!localStorage.getItem('hasSeenTutorial')) {
-      setShowTutorial(true);
-    }
-  }, []);
-
   // Close hamburger menu on outside click
   useEffect(() => {
     if (!menuOpen) return;
@@ -200,6 +193,13 @@ export function App() {
     notify
   };
 
+  // Show tutorial on first login
+  useEffect(() => {
+    if (stage === 'authorized' && !localStorage.getItem('hasSeenTutorial')) {
+      setShowTutorial(true);
+    }
+  }, [stage]);
+
   const addNetwork = async () => {
     await prividium.addNetworkToWallet();
     await refreshSession();
@@ -274,25 +274,27 @@ export function App() {
       ) : null}
       {statusMessage ? <div className={`banner ${statusKind}`}>{statusMessage}</div> : null}
 
-      {walletAvailable && stage === 'logged_out' ? (
-        <main className="page-container">
-          <div className="login-prompt">
-            <h2>Welcome to Lowest Unique Number</h2>
-            <p>Log in with your wallet to view rounds and place bets.</p>
-            <button className="btn-primary" onClick={() => void login()} disabled={loginPending}>
-              {loginPending ? <><span className="spinner" /> Connecting...</> : 'Login'}
-            </button>
-          </div>
-        </main>
-      ) : null}
-
-      {walletAvailable && stage !== 'logged_out' ? (
+      {walletAvailable ? (
         <main className="page-container">
           <Routes>
-            <Route path="/" element={<RoundListPage session={session} />} />
-            <Route path="/round/:id" element={<RoundDetailPage session={session} />} />
-            <Route path="/admin" element={<AdminPage session={session} />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            {stage === 'logged_out' ? (
+              <Route path="*" element={
+                <div className="login-prompt">
+                  <h2>Welcome to Lowest Unique Number</h2>
+                  <p>Log in with your wallet to view rounds and place bets.</p>
+                  <button className="btn-primary" onClick={() => void login()} disabled={loginPending}>
+                    {loginPending ? <><span className="spinner" /> Connecting...</> : 'Login'}
+                  </button>
+                </div>
+              } />
+            ) : (
+              <>
+                <Route path="/" element={<RoundListPage session={session} />} />
+                <Route path="/round/:id" element={<RoundDetailPage session={session} />} />
+                <Route path="/admin" element={<AdminPage session={session} />} />
+              </>
+            )}
           </Routes>
         </main>
       ) : null}
