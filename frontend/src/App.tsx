@@ -19,6 +19,24 @@ export type SessionState = {
   notify: (message: string, kind?: 'ok' | 'warn') => void;
 };
 
+const tutorialSlides = [
+  {
+    image: '/images/how-to-play-1.png',
+    title: 'Pick a Number',
+    description: 'Choose a number between 1 and 256. Your bet is encrypted and private — nobody else can see it.'
+  },
+  {
+    image: '/images/how-to-play-2.png',
+    title: 'Wait for the Round',
+    description: 'Place your bets before the timer runs out. You can use multiple bets per round if allowed.'
+  },
+  {
+    image: '/images/how-to-play-3.png',
+    title: 'Lowest Unique Wins',
+    description: 'The player who picked the lowest number that nobody else chose wins the round!'
+  }
+];
+
 export function App() {
   const [account, setAccount] = useState<`0x${string}` | null>(null);
   const [authorized, setAuthorized] = useState(false);
@@ -28,6 +46,10 @@ export function App() {
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [walletAvailable, setWalletAvailable] = useState(hasEthereumProvider());
   const [showWalletMissing, setShowWalletMissing] = useState(false);
+  const [loginPending, setLoginPending] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialSlide, setTutorialSlide] = useState(0);
 
   const shortAccount = useMemo(() => {
     if (!account) return null;
@@ -74,6 +96,30 @@ export function App() {
     }
   }, [refreshSession, notify]);
 
+  // Close hamburger menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.hamburger-btn') && !target.closest('.hamburger-dropdown')) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [menuOpen]);
+
+  const openTutorial = () => {
+    setTutorialSlide(0);
+    setShowTutorial(true);
+    setMenuOpen(false);
+  };
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem('hasSeenTutorial', 'true');
+  };
+
   const login = async () => {
     if (!hasEthereumProvider()) {
       setWalletAvailable(false);
@@ -88,24 +134,29 @@ export function App() {
       return;
     }
 
-    if (!prividium.isAuthorized()) {
-      await prividium.authorize({ scopes: ['wallet:required', 'network:required'] });
+    try {
+      setLoginPending(true);
+
+      if (!prividium.isAuthorized()) {
+        await prividium.authorize({ scopes: ['wallet:required', 'network:required'] });
+      }
+      const [nextAccount] = await walletClient.requestAddresses();
+
+      const currentChainId = await walletClient.getChainId().catch(() => null);
+      if (currentChainId !== chain.id && (window as any).ethereum) {
+        await (window as any).ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: `0x${chain.id.toString(16)}` }]
+        });
+      }
+
+      await refreshSession(nextAccount);
+      await refreshAppState();
+      window.sessionStorage.setItem('app_flash_status', 'Logged in successfully.');
+      window.location.reload();
+    } finally {
+      setLoginPending(false);
     }
-    const [nextAccount] = await walletClient.requestAddresses();
-
-    const currentChainId = await walletClient.getChainId().catch(() => null);
-    if (currentChainId !== chain.id && (window as any).ethereum) {
-      await (window as any).ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${chain.id.toString(16)}` }]
-      });
-    }
-
-
-    await refreshSession(nextAccount);
-    await refreshAppState();
-    window.sessionStorage.setItem('app_flash_status', 'Logged in successfully.');
-    window.location.reload();
   };
 
   const logout = async () => {
@@ -142,6 +193,13 @@ export function App() {
     notify
   };
 
+  // Show tutorial on first login
+  useEffect(() => {
+    if (stage === 'authorized' && !localStorage.getItem('hasSeenTutorial')) {
+      setShowTutorial(true);
+    }
+  }, [stage]);
+
   const addNetwork = async () => {
     await prividium.addNetworkToWallet();
     await refreshSession();
@@ -150,33 +208,52 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="navbar">
-        <div>
-          <h1>Lowest Unique Number</h1>
-          <p className="subtle">Private 1..256 rounds on Prividium</p>
-        </div>
-        <nav className="nav-links">
-          <Link to="/">Rounds</Link>
-          <Link to="/admin">Admin</Link>
-        </nav>
-        <div className="auth-box">
-          <span className={`chip ${stage}`}>Status: {stage.replace('_', ' ')}</span>
-          {shortAccount ? <span className="chip account-chip">Wallet: {shortAccount}</span> : null}
-          {session.loggedIn ? (
-            <button className="btn-secondary" onClick={logout}>
-              Logout
+        <Link to="/" style={{ textDecoration: 'none' }}><h1>Lowest Unique Number</h1></Link>
+
+        <button
+          className={`hamburger-btn ${menuOpen ? 'open' : ''}`}
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Menu"
+          aria-expanded={menuOpen}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+
+        {menuOpen && (
+          <nav className="hamburger-dropdown">
+            <Link to="/" onClick={() => setMenuOpen(false)}>Rounds</Link>
+            <Link to="/admin" onClick={() => setMenuOpen(false)}>Admin</Link>
+            <div className="dropdown-divider" />
+            <button onClick={openTutorial}>
+              <span className="how-to-play-icon">How to Play</span>
             </button>
-          ) : (
-            <button className="btn-primary" onClick={login} disabled={!walletAvailable}>
-              Login
-            </button>
-          )}
-          {!walletAvailable ? <span className="wallet-helper">No wallet detected</span> : null}
-        </div>
+            <div className="dropdown-divider" />
+            <div className="dropdown-auth">
+              <span className={`chip ${stage}`}>
+                <span className={`status-dot ${stage === 'authorized' ? 'live' : 'disconnected'}`} />
+                {stage.replace('_', ' ')}
+              </span>
+              {shortAccount ? <span className="chip account-chip">{shortAccount}</span> : null}
+              {session.loggedIn ? (
+                <button className="btn-secondary" onClick={() => { void logout(); setMenuOpen(false); }}>
+                  Logout
+                </button>
+              ) : (
+                <button className="btn-primary" onClick={() => { void login(); setMenuOpen(false); }} disabled={!walletAvailable || loginPending}>
+                  {loginPending ? <><span className="spinner" /> Connecting...</> : 'Login'}
+                </button>
+              )}
+              {!walletAvailable ? <span className="wallet-helper">No wallet detected</span> : null}
+            </div>
+          </nav>
+        )}
       </header>
 
       {!walletAvailable ? (
         <div className="wallet-required-card card">
-          <h2>🔒 Wallet Required</h2>
+          <h2>Wallet Required</h2>
           <p>This game requires a Web3 wallet to participate.</p>
           <a className="btn-primary install-link" href="https://metamask.io/download/" target="_blank" rel="noreferrer">
             Install MetaMask
@@ -184,9 +261,6 @@ export function App() {
         </div>
       ) : null}
 
-      {stage === 'logged_out' ? (
-        <div className="banner warn">You must log in to view your whitelist status and place bets.</div>
-      ) : null}
       {stage === 'connected' ? (
         <div className="banner warn">Connected, but not logged in to Prividium. Click Login to continue.</div>
       ) : null}
@@ -203,10 +277,24 @@ export function App() {
       {walletAvailable ? (
         <main className="page-container">
           <Routes>
-            <Route path="/" element={<RoundListPage session={session} />} />
-            <Route path="/round/:id" element={<RoundDetailPage session={session} />} />
-            <Route path="/admin" element={<AdminPage session={session} />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            {stage === 'logged_out' ? (
+              <Route path="*" element={
+                <div className="login-prompt">
+                  <h2>Welcome to Lowest Unique Number</h2>
+                  <p>Log in with your wallet to view rounds and place bets.</p>
+                  <button className="btn-primary" onClick={() => void login()} disabled={loginPending}>
+                    {loginPending ? <><span className="spinner" /> Connecting...</> : 'Login'}
+                  </button>
+                </div>
+              } />
+            ) : (
+              <>
+                <Route path="/" element={<RoundListPage session={session} />} />
+                <Route path="/round/:id" element={<RoundDetailPage session={session} />} />
+                <Route path="/admin" element={<AdminPage session={session} />} />
+              </>
+            )}
           </Routes>
         </main>
       ) : null}
@@ -225,6 +313,68 @@ export function App() {
               <button className="btn-secondary" onClick={() => setShowWalletMissing(false)}>
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showTutorial ? (
+        <div className="tutorial-backdrop" onClick={(e) => {
+          if (e.target === e.currentTarget) closeTutorial();
+        }}>
+          <div className="tutorial-modal" role="dialog" aria-modal="true" aria-label="How to Play">
+            <div className="tutorial-header">
+              <h2>How To Play</h2>
+              <button className="tutorial-close-btn" onClick={closeTutorial} aria-label="Close">&times;</button>
+            </div>
+            <div className="tutorial-slide" key={tutorialSlide}>
+              <div className="tutorial-slide-img">
+                <img
+                  src={tutorialSlides[tutorialSlide].image}
+                  alt={tutorialSlides[tutorialSlide].title}
+                />
+              </div>
+              <div className="tutorial-slide-title">
+                <div className="tutorial-step-number">{tutorialSlide + 1}</div>
+                <h3>{tutorialSlides[tutorialSlide].title}</h3>
+              </div>
+              <p>{tutorialSlides[tutorialSlide].description}</p>
+            </div>
+            <div className="tutorial-controls">
+              <button
+                className={`btn-secondary ${tutorialSlide === 0 ? 'btn-invisible' : ''}`}
+                onClick={() => setTutorialSlide(Math.max(0, tutorialSlide - 1))}
+                style={{ minWidth: 80 }}
+              >
+                Previous
+              </button>
+              <div className="tutorial-dots">
+                {tutorialSlides.map((_, i) => (
+                  <button
+                    key={i}
+                    className={`tutorial-dot ${i === tutorialSlide ? 'active' : ''}`}
+                    onClick={() => setTutorialSlide(i)}
+                    aria-label={`Slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+              {tutorialSlide < tutorialSlides.length - 1 ? (
+                <button
+                  className="btn-primary"
+                  onClick={() => setTutorialSlide(tutorialSlide + 1)}
+                  style={{ minWidth: 80 }}
+                >
+                  Next
+                </button>
+              ) : (
+                <button
+                  className="btn-primary"
+                  onClick={closeTutorial}
+                  style={{ minWidth: 80 }}
+                >
+                  Start Playing
+                </button>
+              )}
             </div>
           </div>
         </div>

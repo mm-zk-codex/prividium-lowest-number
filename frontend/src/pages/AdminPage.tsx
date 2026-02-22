@@ -106,7 +106,7 @@ export function AdminPage({ session }: { session: SessionState }) {
 
   return (
     <section className="stack">
-      <article className="card stack">
+      <article className="card stack fade-in">
         <h2>Admin Panel</h2>
         <p className="subtle">Create and manage rounds with private bets.</p>
         {isAdmin ? <span className="status-badge active">You are admin</span> : <span className="status-badge ended">You are not admin</span>}
@@ -114,7 +114,7 @@ export function AdminPage({ session }: { session: SessionState }) {
 
       {isAdmin ? (
         <>
-          <article className="card stack">
+          <article className="card stack fade-in">
             <h3>Create Round</h3>
             <label>
               <span className="label">Round name (required)</span>
@@ -141,7 +141,7 @@ export function AdminPage({ session }: { session: SessionState }) {
             </button>
           </article>
 
-          <article className="card stack">
+          <article className="card stack fade-in">
             <h3>Manage Round</h3>
             <label>
               <span className="label">Round ID</span>
@@ -157,7 +157,7 @@ export function AdminPage({ session }: { session: SessionState }) {
             </div>
           </article>
 
-          <article className="card stack">
+          <article className="card stack fade-in">
             <h3>Add admin</h3>
             <label>
               <span className="label">New admin address</span>
@@ -174,7 +174,14 @@ export function AdminPage({ session }: { session: SessionState }) {
         </article>
       )}
 
-      <article className="card">{status}</article>
+      {status ? (
+        <article className="card fade-in">
+          <div className="pending-indicator">
+            <span className="spinner" />
+            {status}
+          </div>
+        </article>
+      ) : null}
     </section>
   );
 }
