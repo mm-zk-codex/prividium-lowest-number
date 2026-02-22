@@ -261,9 +261,6 @@ export function App() {
         </div>
       ) : null}
 
-      {stage === 'logged_out' ? (
-        <div className="banner warn">You must log in to view your whitelist status and place bets.</div>
-      ) : null}
       {stage === 'connected' ? (
         <div className="banner warn">Connected, but not logged in to Prividium. Click Login to continue.</div>
       ) : null}
@@ -277,7 +274,19 @@ export function App() {
       ) : null}
       {statusMessage ? <div className={`banner ${statusKind}`}>{statusMessage}</div> : null}
 
-      {walletAvailable ? (
+      {walletAvailable && stage === 'logged_out' ? (
+        <main className="page-container">
+          <div className="login-prompt">
+            <h2>Welcome to Lowest Unique Number</h2>
+            <p>Log in with your wallet to view rounds and place bets.</p>
+            <button className="btn-primary" onClick={() => void login()} disabled={loginPending}>
+              {loginPending ? <><span className="spinner" /> Connecting...</> : 'Login'}
+            </button>
+          </div>
+        </main>
+      ) : null}
+
+      {walletAvailable && stage !== 'logged_out' ? (
         <main className="page-container">
           <Routes>
             <Route path="/" element={<RoundListPage session={session} />} />

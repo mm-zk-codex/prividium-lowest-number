@@ -594,6 +594,30 @@ select:focus {
   justify-content: center;
 }
 
+/* --- Login Prompt --- */
+.login-prompt {
+  text-align: center;
+  padding: var(--space-2xl) var(--space-lg);
+}
+
+.login-prompt h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 var(--space-sm);
+  color: var(--text-primary);
+}
+
+.login-prompt p {
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-lg);
+  font-size: 1rem;
+}
+
+.login-prompt .btn-primary {
+  padding: 14px 36px;
+  font-size: 1.05rem;
+}
+
 /* --- Modal --- */
 .modal-backdrop {
   position: fixed;
